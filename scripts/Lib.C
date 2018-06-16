@@ -60,6 +60,7 @@ class Significance {
     Significance(TH1D * _SigTH1, std::vector<TH1D *> _ArBackTH1):SigTH1(_SigTH1),ArBackTH1(_ArBackTH1){
         TH1D *    TH1Copy=(TH1D *) _SigTH1->Clone();
         BackTH1=(TH1D *) _SigTH1->Clone();
+        BackTH1->Reset();//To get rid of the signal events
         BackTH1->Sumw2();//To get good error
         for (auto it:_ArBackTH1){
             
@@ -78,6 +79,12 @@ class Significance {
         BackTH1= _BackTH1;
     }//end SetBackground
     
+    /*
+    void AddBackground(TH1D * _BackTH1){
+        BackTH1->Add(_BackTH1);
+        }//end SetBackground
+    */
+    
     /*Get Methods*/
     std::vector<TH1D *> GetVector(void){
         
@@ -88,35 +95,41 @@ class Significance {
         return BackTH1;
     }
     
-    TH1D * GetSignificance(void){
-        int Nbines=BackTH1->GetNbinsX();
-        TH1D *    TH1Copy=(TH1D *) SigTH1->Clone();
-        TH1Copy->SetNameTitle("Significance", "Significance");
+    TH1D * GetSigMoreThan(void){
+        int Nbines=BackTH1->GetNbinsX();       
+        TH1D *    TH1CopyInt=(TH1D *) SigTH1->Clone();
+        TH1CopyInt->SetNameTitle("Significance More Than", "Significance");
         gStyle->SetOptStat(0);
-        for (int l=0; l<Nbines; l++){
-            Double_t Zig=0;
-            Double_t tmpErr;
-            Double_t sumSB=Error_Propagation::SumErr(SigTH1->GetBinContent(l),BackTH1->GetBinContent(l), SigTH1->GetBinContent(l), BackTH1->GetBinContent(l),tmpErr);
+        for (int l=0; l<=Nbines; l++){
+            Double_t intZig=0;
+            Double_t SigErr,BacErr;
+            Double_t IntSignal=SigTH1->IntegralAndError(l,Nbines,SigErr);
+            Double_t IntBackground=BackTH1->IntegralAndError(l,Nbines,BacErr);
+            Double_t sumSB=IntSignal+IntBackground;
             if (sumSB>0){
-                Zig=((SigTH1->GetBinContent(l))/(TMath::Sqrt(sumSB)));
+                intZig=IntSignal/(TMath::Sqrt(sumSB));
             }else{
-                Zig=0;
+                intZig=0;
             }
-            Double_t ZigErr;
-            TH1Copy->SetBinContent(l,Zig);
-            if (!std::isnan(ZigErr)){
-                TH1Copy->SetBinError(l,ZigErr);
+            //std::cout<<"l: "<<l<<std::endl;
+            //std::cout<<"intZig: "<<intZig<<std::endl;
+            TH1CopyInt->SetBinContent(l,intZig);
+            //TH1Copy->SetMarkerStyle(kOpenCircle);           
+            //Using Cuadrature to calculate the error
+            Double_t IntZigErr=TMath::Sqrt(((((TMath::Power(IntBackground,2))*(TMath::Power(SigErr,2)))/4)+((TMath::Power(IntSignal,2))*(TMath::Power(BacErr,2))))/(TMath::Power(sumSB,3)));
+            TH1CopyInt->SetBinContent(l,intZig);
+            if (!std::isnan(intZig)){
+                TH1CopyInt->SetBinError(l,IntZigErr);
             }else{
-                //Esto es correcto??
-                TH1Copy->SetBinError(l,0);
+                TH1CopyInt->SetBinError(l,0);
                 //TH1Copy->SetMarkerStyle(kOpenCircle);
             }
-            //std::cout<<"Value: "<<TH1Copy->GetBinError(l)<<std::endl;
-            //std::cout<<"ZigErr: "<<TH1Copy->GetBinContent(l)<<std::endl;
-
+              
         }
-        return TH1Copy;
-    }//End GetSignificance
+        return TH1CopyInt;
+    }//End GetSigMoreThan
+    
+    /*Significance LessThanType*/
     
     TH1D * GetSigLessThan(void){
         int Nbines=BackTH1->GetNbinsX();       
@@ -151,6 +164,56 @@ class Significance {
         }
         return TH1CopyInt; 
     }//End GetSigLessThan
+    
+    /*Get effMoreThan*/
+    std::vector<TH1D *> GetEffMoreThan(void){
+        Int_t Nbines=SigTH1->GetNbinsX();       
+        std::vector<TH1D *> arrTH1Copy;
+        std::vector<TH1D *> arrTH1Imput;
+        arrTH1Imput =ArBackTH1; //Put the back
+        arrTH1Imput.push_back(SigTH1);
+        //std::cout<<ArBackTH1.size()<<std::endl; 
+        //std::cout<<arrTH1Imput.size()<<std::endl; 
+        //Int_t cont=0;
+        
+        for (auto it:arrTH1Imput){
+            TH1D * TH1CopyInt=(TH1D *) it->Clone();
+            TH1CopyInt->SetNameTitle("Efficiency Less Than", "Efficiency");
+            gStyle->SetOptStat(0);
+            //std::cout<<cont<<std::endl;
+            //cont++;
+            for (int l=Nbines; l>=0; l--){
+                Double_t intEff=0;
+                Double_t EffErr;
+                Double_t IntSignal=it->IntegralAndError(l,Nbines,EffErr);
+                Double_t IntSignalTot=it->IntegralAndError(0,Nbines,EffErr);
+                //std::cout<<IntSignal<<std::endl;
+                //std::cout<<IntSignalTot<<std::endl;
+                
+                if (IntSignalTot>0){
+                    intEff=IntSignal/IntSignalTot;
+                    //std::cout<<intEff<<std::endl;
+                }else{
+                    intEff=0;
+                }
+                //std::cout<<"Before: "<<TH1CopyInt->GetBinContent(l)<<std::endl;
+                TH1CopyInt->SetBinContent(l,intEff);
+                //std::cout<<"After: "<<TH1CopyInt->GetBinContent(l)<<std::endl;
+                Double_t IntEffErr=0;
+                if (!std::isnan(IntEffErr)){
+                    TH1CopyInt->SetBinError(l,IntEffErr);
+                }else{
+                    TH1CopyInt->SetBinError(l,0);
+                }  
+            }
+            //std::cout<<TH1CopyInt->GetBinContent(TH1CopyInt->GetMaximumBin())<<std::endl;
+            arrTH1Copy.push_back(TH1CopyInt);
+           
+        }        
+        //std::cout<<arrTH1Copy[0]->GetBinContent(arrTH1Copy[0]->GetMaximumBin())<<std::endl;
+        return arrTH1Copy;
+    }//End GetEffMoreThan
+    
     
     std::vector<TH1D *> GetEffLessThan(void){
         Int_t Nbines=SigTH1->GetNbinsX();       
@@ -199,6 +262,52 @@ class Significance {
         //std::cout<<arrTH1Copy[0]->GetBinContent(arrTH1Copy[0]->GetMaximumBin())<<std::endl;
         return arrTH1Copy;
     }//End GetEffLessThan
+    
+    
+    
+    TH2F *GetSignificance(void){
+        
+        
+        Int_t nbinsx = BackTH1->GetNbinsX()+1, nbinsy =BackTH1->GetNbinsX()+1;//One more bin
+        Double_t xlow = (Double_t) BackTH1->GetBinLowEdge(0), xup = (Double_t) (BackTH1->GetBinLowEdge(nbinsx)+BackTH1->GetBinWidth(nbinsx)) ; 
+        Double_t ylow = (Double_t) BackTH1->GetBinLowEdge(0), yup = (Double_t) (BackTH1->GetBinLowEdge(nbinsx)+BackTH1->GetBinWidth(nbinsx)) ; 
+        TH2F *htext3 = new TH2F("htext3","Significance",nbinsx,xlow,xup,nbinsy,ylow,yup);
+
+        gStyle->SetOptStat(0);
+        for (int l=nbinsx; l>=0; l--){
+            
+            for (int m=0; m<=nbinsx; m++){
+                Double_t intZig = 0;
+                Double_t sumSB = 0;
+                Double_t IntSignal = 0;
+                if (m > l){
+                    Double_t IntSignalLess=SigTH1->Integral(0,l);//Number of events in the bins less than l 
+                    Double_t IntBackgroundLess=BackTH1->Integral(0,l);                               
+                    Double_t IntSignalMore=SigTH1->Integral(m,nbinsx);//Number of events in the bins more than l 
+                    Double_t IntBackgroundMore=BackTH1->Integral(m,nbinsx);
+                    sumSB=IntSignalLess+IntBackgroundLess+IntSignalMore+IntBackgroundMore;
+                    IntSignal = IntSignalLess+IntSignalMore;
+                            
+                }else{ 
+                    IntSignal=SigTH1->Integral(m,l);//Number of events between the bins m and l 
+                    Double_t IntBackground=BackTH1->Integral(m,l);
+                    sumSB=IntSignal+IntBackground;  
+                }               
+                
+                if (sumSB>0){
+                    intZig=IntSignal/(TMath::Sqrt(sumSB));
+                }else{
+                    intZig=0;
+                }
+                htext3->SetBinContent(l,m,intZig);
+
+            }//End For m (more than)
+              
+        }//End for l(lessthan)
+
+        //htext3->Draw("COLZ");
+        return htext3;
+    }//END GetSignificance   
        
 };
 
