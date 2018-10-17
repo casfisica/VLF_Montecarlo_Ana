@@ -63,7 +63,7 @@ class Significance {
         BackTH1->Reset();//To get rid of the signal events
         BackTH1->Sumw2();//To get good error
         for (auto it:_ArBackTH1){
-            
+            //Get a sum off all background
             BackTH1->Add(it);
          }
     }
@@ -310,6 +310,121 @@ class Significance {
     }//END GetSignificance   
        
 };
+
+
+class CompareTH1D {
+    private:
+        TH1D *    FirstTH1;
+        std::vector<TH1D *> ArrSecondTH1;
+   
+    public: 
+        /*Constructors*/
+        CompareTH1D(void):FirstTH1(NULL),ArrSecondTH1(){}
+        CompareTH1D(TH1D * _FirstTH1, TH1D * _SecondTH1):FirstTH1(_FirstTH1){
+            ArrSecondTH1.push_back(_SecondTH1);
+        }
+        CompareTH1D(TH1D * _FirstTH1, std::vector<TH1D *> _ArrSecondTH1):FirstTH1(_FirstTH1),ArrSecondTH1(_ArrSecondTH1){}
+        CompareTH1D(std::vector<TH1D *> _ArrSecondTH1):FirstTH1(NULL),ArrSecondTH1(_ArrSecondTH1){}
+
+    /*Destructor*/
+    ~CompareTH1D(){}
+    
+    
+    /*Set Methods*/
+    void SetFirst(TH1D * _FirstTH1){
+        FirstTH1= _FirstTH1;
+    }//end SetFirst
+    
+    void AddTH1(TH1D * _SecondTH1){
+        ArrSecondTH1.push_back(_SecondTH1);
+    }//end SetSecond
+     
+    /*Get Methods*/
+    std::vector<TH1D *> CompareChape(Double_t norm =1.0){
+        if (!FirstTH1){
+            std::cout<<"Compare Only including First TH1, use SetFirst(TH1D * _FirstTH1)"<<std::endl;
+            exit (EXIT_FAILURE);
+        }
+        std::vector<TH1D *> ArrSecondTH1Normal;
+        for (auto it:ArrSecondTH1){
+            ArrSecondTH1Normal.push_back((TH1D *)it->Clone());
+        }
+         TH1D * FirstTH1Normal= (TH1D *)FirstTH1->Clone();
+        /*if option "width" is specified, the integral is the sum of
+        the bin contents multiplied by the bin width in x.*/
+        //FirstTH1Normal->Scale(norm/FirstTH1Normal->Integral("width"));
+        FirstTH1Normal->Scale(norm/FirstTH1Normal->Integral());
+        for (auto it:ArrSecondTH1Normal){
+            it->Scale(norm/it->Integral());
+            auto nbines=it->GetNbinsX();
+            for (auto i=0; i<nbines; i++){
+                Double_t temp =FirstTH1Normal->GetBinContent(i)-it->GetBinContent(i);
+                it->SetBinContent(i,temp);
+            }
+        }
+        return  ArrSecondTH1Normal;
+    }//END CompareChape
+    
+    
+    std::vector<TH1D *> GetNormalizedTH1(Double_t norm =1.0){
+        std::vector<TH1D *> ArrSecondTH1Normal;
+        ArrSecondTH1Normal.push_back((TH1D *)FirstTH1->Clone());
+        for (auto it:ArrSecondTH1){
+            ArrSecondTH1Normal.push_back((TH1D *)it->Clone());
+        }
+        for (auto it:ArrSecondTH1Normal){
+            //it->Scale(norm/it->Integral(), "width");
+            it->Scale(norm/it->Integral());
+        }
+        return  ArrSecondTH1Normal;
+    }//END GetNormalizedTH1
+        
+    //std::vector<TH1D *> CompareContent(void){}
+    //   return ArBackTH1;
+    
+   static TH1D * NormalizedTH1(TH1D * _InTH1,Double_t norm =1.0){
+        TH1D * _OutTH1 = (TH1D *)_InTH1->Clone();
+        _OutTH1->Scale(norm/_OutTH1->Integral());
+        return  _OutTH1;
+    }
+    
+};
+
+
+    /**/
+std::string ReplaceAll(std::string str, const std::string& from, const std::string& to) {
+    size_t start_pos = 0;
+    while((start_pos = str.find(from, start_pos)) != std::string::npos) {
+        str.replace(start_pos, from.length(), to);
+        start_pos += to.length(); // Handles case where 'to' is a substring of 'from'
+    }
+    return str;
+}
+
+
+/**/
+std::string NameMaker(std::string str){
+    std::string strout =  str;
+    strout = ReplaceAll(strout, std::string(" "), std::string("_"));
+    strout = ReplaceAll(strout, std::string("<"), std::string("LT"));
+    strout = ReplaceAll(strout, std::string(">"), std::string("MT"));
+    strout = ReplaceAll(strout, std::string("#"), std::string(""));
+    strout = ReplaceAll(strout, std::string("@"), std::string(""));
+    strout = ReplaceAll(strout, std::string("("), std::string(""));
+    strout = ReplaceAll(strout, std::string(")"), std::string(""));
+    strout = ReplaceAll(strout, std::string("||"), std::string("OR"));
+    strout = ReplaceAll(strout, std::string("&&"), std::string("AND"));
+    strout = ReplaceAll(strout, std::string("."), std::string(""));
+    strout = ReplaceAll(strout, std::string("=="), std::string("EQ"));
+    strout = ReplaceAll(strout, std::string("!="), std::string("NEQ"));
+    //strout = ReplaceAll(strout, std::string(""), std::string(""));
+    //strout = ReplaceAll(strout, std::string(""), std::string(""));
+    
+    return strout;
+};
+
+
+
 
 int Lib(void){
 return 0;
