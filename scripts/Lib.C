@@ -8,8 +8,6 @@
 #include "TTreeReader.h"
 #include <tuple>
 #include <vector>
-#include <utility>      
-#include<Plotter.h>
 
 
 class Error_Propagation{
@@ -72,11 +70,11 @@ class Significance {
     
     /*Set Methods*/
     void SetSignal(TH1D * _SigTH1){
-        SigTH1= _SigTH1;
+        SigTH1= (TH1D *) _SigTH1->Clone();
     }//end SetBackground
     
     void SetBackground(TH1D * _BackTH1){
-        BackTH1= _BackTH1;
+        BackTH1= (TH1D *)_BackTH1->Clone();
     }//end SetBackground
     
     /*
@@ -417,10 +415,73 @@ std::string NameMaker(std::string str){
     strout = ReplaceAll(strout, std::string("."), std::string(""));
     strout = ReplaceAll(strout, std::string("=="), std::string("EQ"));
     strout = ReplaceAll(strout, std::string("!="), std::string("NEQ"));
-    //strout = ReplaceAll(strout, std::string(""), std::string(""));
+    strout = ReplaceAll(strout, std::string("*"), std::string(""));
+    strout = ReplaceAll(strout, std::string("%"), std::string(""));
+    strout = ReplaceAll(strout, std::string(":"), std::string(""));
+    strout = ReplaceAll(strout, std::string("+"), std::string("Plus"));
+    strout = ReplaceAll(strout, std::string("-"), std::string("Minus"));
     //strout = ReplaceAll(strout, std::string(""), std::string(""));
     
     return strout;
+};
+
+class list_files{
+    /********************************************************
+    Use
+    *********************************************
+    list_files lista;
+    a=lista.GetFileList(dirname.c_str(),ext.c_str());
+    a.size()
+    a.at(290)
+    *********************************************************/
+    private:
+    // Vector to hold file names
+    std::vector<string> filelist = std::vector<string>();
+    //std::vector<string> filelist;
+    //const char *_dirname;
+   
+    
+    public:
+    /*Constructor*/
+    //list_files(const char *_dirname):_dirname(dirname){}
+    list_files(void){}
+    /*Destructor*/
+    ~list_files(){}
+    
+    void collectAllFiles(const char *_dirname="/", const char *ext=".root")
+    {
+        TSystemDirectory dir(_dirname, _dirname); 
+        TList *files = dir.GetListOfFiles(); 
+        std::string dirnamestring= (std::string) _dirname;
+
+        if (files) { 
+            TSystemFile *file; 
+            TString fname; 
+            TIter next(files); 
+            while ((file=(TSystemFile*)next())) { 
+                fname = file->GetName(); 
+                if(!file->IsDirectory() && fname.EndsWith(ext)) { 
+                    //cout << fname.Data() << endl; 
+                    filelist.push_back(dirnamestring+"/"+fname.Data());
+                }
+            
+                // If this which we found now, is a directory, recursively 
+                // call the function again
+                if (file->IsDirectory() && strcmp(fname,".") != 0 && strcmp(fname,"..")) { 
+                    std::string tempdirnamestring=dirnamestring+"/"+fname.Data();
+                    collectAllFiles(tempdirnamestring.c_str(),ext);
+                    //collectAllFiles(tempdirnamestring.c_str(),ext,filelist);
+                    //std::cout<<fname.Data()<<std::endl;
+                }      
+            } 
+        }
+    }
+
+    /*Get Method*/
+    std::vector<string> GetFileList(const char *_dirname="/", const char *ext=".root"){
+        collectAllFiles(_dirname,ext);
+        return filelist;
+    }
 };
 
 
