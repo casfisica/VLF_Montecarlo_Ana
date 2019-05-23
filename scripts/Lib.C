@@ -169,7 +169,8 @@ class Significance {
         std::vector<TH1D *> arrTH1Copy;
         std::vector<TH1D *> arrTH1Imput;
         arrTH1Imput =ArBackTH1; //Put the back
-        arrTH1Imput.push_back(SigTH1);
+        //arrTH1Imput.push_back(SigTH1);
+        arrTH1Imput.insert(arrTH1Imput.begin(), SigTH1);//Put the signal in the front
         //std::cout<<ArBackTH1.size()<<std::endl; 
         //std::cout<<arrTH1Imput.size()<<std::endl; 
         //Int_t cont=0;
@@ -214,11 +215,13 @@ class Significance {
     
     
     std::vector<TH1D *> GetEffLessThan(void){
+        //The last element of the array is the signal
         Int_t Nbines=SigTH1->GetNbinsX();       
         std::vector<TH1D *> arrTH1Copy;
         std::vector<TH1D *> arrTH1Imput;
         arrTH1Imput =ArBackTH1; //Put the back
-        arrTH1Imput.push_back(SigTH1);
+        arrTH1Imput.insert(arrTH1Imput.begin(), SigTH1);
+        //arrTH1Imput.push_back(SigTH1);
         //std::cout<<ArBackTH1.size()<<std::endl; 
         //std::cout<<arrTH1Imput.size()<<std::endl; 
         //Int_t cont=0;
