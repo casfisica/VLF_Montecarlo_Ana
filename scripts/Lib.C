@@ -9,6 +9,15 @@
 #include <tuple>
 #include <vector>
 
+void redrawBorder()
+{
+   // this little macro redraws the axis tick marks and the pad border lines.
+   gPad->Update();
+   gPad->RedrawAxis();
+   TLine l;
+   l.DrawLine(gPad->GetUxmin(), gPad->GetUymax(), gPad->GetUxmax(), gPad->GetUymax());
+   l.DrawLine(gPad->GetUxmax(), gPad->GetUymin(), gPad->GetUxmax(), gPad->GetUymax());
+}
 
 class Error_Propagation{
     protected:
